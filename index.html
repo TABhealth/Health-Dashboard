@@ -8,7 +8,7 @@
 </style></head><body>
 <header><div><small>MEIN SYSTEM</small><h1>Health & Longevity</h1></div><div id="auth"></div></header><main><section class="hero"><div><small id="date"></small><h2 id="focus">Tagesplan</h2></div><div class="score"><b id="score">0%</b><small>Score</small></div></section><nav id="nav"></nav>
 <section id="today" class="view active"><div class="grid"><article class="card wide"><h3>Tagesplan</h3><div id="plan"></div></article><article class="card"><h3>Tägliche Grundlagen</h3><div id="base"></div></article><article class="card"><h3>Körper & Regeneration</h3><form id="bodyForm"><label>Gewicht (kg)<input name="weight" type="number" step=".1"></label><label>HRV (ms)<input name="hrv" type="number"></label><label>Ruhepuls (bpm)<input name="rhr" type="number"></label><button>Speichern</button></form></article></div></section>
-<section id="calendar" class="view"><article class="card"><h3>Kalender</h3><div id="calendarGrid" class="cal"></div></article></section>
+<section id="calendar" class="view"><article class="card"><h3>Kalender</h3><div style="display:flex;align-items:center;gap:1rem"><button type="button" id="month-prev" aria-label="Vorheriger Monat">‹</button><h3 id="current-month-year" aria-live="polite"></h3><button type="button" id="month-next" aria-label="Nächster Monat">›</button></div><div class="cal" aria-hidden="true"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div><div id="calendarGrid" class="cal"></div></article></section>
 <section id="training" class="view"><div class="grid"><article class="card wide"><h3>Krafttraining <small id="volume"></small></h3><form id="strengthForm"><label>Übung<input name="exercise" required></label><label>Sätze<input name="sets" type="number" required></label><label>Wiederholungen<input name="reps" type="number" required></label><label>Gewicht kg<input name="weight" type="number" required></label><button>Hinzufügen</button></form><div id="strength"></div></article><article class="card"><h3>Cardio</h3><form id="cardioForm"><label>Strecke km<input name="distance" type="number"></label><label>Zeit Min.<input name="minutes" type="number"></label><label>Ø Puls<input name="hr" type="number"></label><label>VO₂max<input name="vo2" type="number" step=".1"></label><button>Speichern</button></form></article></div></section>
 <section id="health" class="view"><div class="grid"><article class="card"><h3>Supplements</h3><div id="supplements"></div></article><article class="card"><h3>Ernährung</h3><form id="foodForm"><label>Mahlzeit<select name="meal"><option>Frühstück</option><option>Mittagessen</option><option>Abendessen</option><option>Snacks</option></select></label><label>kcal<input name="kcal" type="number"></label><label>Protein g<input name="protein" type="number"></label><button>Hinzufügen</button></form><div id="food"></div></article><article class="card wide"><h3>Schlaf</h3><form id="sleepForm"><label>Schlafbeginn<input name="bed" type="time"></label><label>Aufstehzeit<input name="wake" type="time"></label><label>REM Min.<input name="rem" type="number"></label><label>Tiefschlaf Min.<input name="deep" type="number"></label><label>Schlafscore<input name="score" type="number"></label><button>Speichern</button></form></article></div></section>
 <section id="trends" class="view"><article class="card"><h3>Trends</h3><button id="period">Monat</button><div id="trendsGrid" class="grid"></div></article></section>
@@ -81,4 +81,24 @@ document.addEventListener('click',async event=>{
 },true);
 // Beim ersten Öffnen ebenfalls bereits gespeicherte Felder zeigen.
 window.addEventListener('load',()=>setTimeout(populateDayForms,500));
+</script><script>
+// Kalenderanzeige und ausgewählter Tag sind unabhängig voneinander.
+let calendarYear=current.getFullYear(), calendarMonth=current.getMonth();
+function localCalendarKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+renderCalendar=function(){
+  const header=document.getElementById('current-month-year');
+  header.textContent=new Date(calendarYear,calendarMonth,1,12).toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  const offset=(new Date(calendarYear,calendarMonth,1,12).getDay()+6)%7;
+  const count=new Date(calendarYear,calendarMonth+1,0,12).getDate();
+  const now=new Date(),today=localCalendarKey(now.getFullYear(),now.getMonth(),now.getDate());
+  let html='<span></span>'.repeat(offset);
+  for(let d=1;d<=count;d++){
+    const k=localCalendarKey(calendarYear,calendarMonth,d),v=score(k);
+    html+=`<button type="button" class="day" data-day="${k}" ${k>today?'disabled':''}>${d}<i style="--p:${v*3.6}deg"><small>${v}</small></i></button>`;
+  }
+  document.getElementById('calendarGrid').innerHTML=html;
+};
+document.getElementById('month-prev').addEventListener('click',()=>{const x=new Date(calendarYear,calendarMonth-1,1,12);calendarYear=x.getFullYear();calendarMonth=x.getMonth();renderCalendar()});
+document.getElementById('month-next').addEventListener('click',()=>{const x=new Date(calendarYear,calendarMonth+1,1,12);calendarYear=x.getFullYear();calendarMonth=x.getMonth();renderCalendar()});
+renderCalendar();
 </script></body></html>
