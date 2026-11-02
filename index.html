@@ -28,4 +28,57 @@ document.querySelector('#nav').addEventListener('click', function (event) {
   button.classList.add('active');
   view.classList.add('active');
 });
+</script><script>
+// Formularentwürfe gehören zum ausgewählten Tag. Sie bleiben auch bei einem
+// fehlgeschlagenen Speicherversuch erhalten; der Tagwechsel wird dann abgebrochen.
+const draftForms=['bodyForm','sleepForm','strengthForm','cardioForm','foodForm'];
+let switchingDay=false;
+function captureDayDraft() {
+  const record=day(); record.drafts ||= {};
+  for(const id of draftForms) {
+    const form=document.getElementById(id);
+    record.drafts[id]=Object.fromEntries(new FormData(form));
+  }
+  for(const input of document.querySelectorAll('[data-base]')) {
+    if(input.value!=='') record.base[input.dataset.base]=Number(input.value);
+  }
+}
+function populateDayForms() {
+  const record=day();
+  for(const id of draftForms) {
+    const form=document.getElementById(id);
+    form.reset();
+    const values=record.drafts?.[id] || (id==='bodyForm'?record.body:id==='sleepForm'?record.sleep:{});
+    for(const [name,value] of Object.entries(values||{})) {
+      const field=form.elements.namedItem(name); if(field) field.value=value ?? '';
+    }
+  }
+}
+document.addEventListener('click',async event=>{
+  const button=event.target.closest('[data-day]');
+  if(!button||button.disabled)return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  if(switchingDay)return;
+  if(!user){alert('Bitte melde dich an, bevor du den Tag wechselst.');return;}
+  switchingDay=true; button.disabled=true;
+  try {
+    captureDayDraft();
+    const snapshot=structuredClone(state);
+    const {error:writeError}=await sb.from('dashboard_states').upsert({user_id:user.id,state:snapshot,updated_at:new Date().toISOString()});
+    if(writeError)throw writeError;
+    const {data,error:readError}=await sb.from('dashboard_states').select('state').eq('user_id',user.id).single();
+    if(readError)throw readError;
+    if(!data?.state?.days)throw new Error('Die gespeicherten Tagesdaten konnten nicht gelesen werden.');
+    state=data.state;
+    current=new Date(button.dataset.day+'T12:00:00');
+    render(); populateDayForms();
+    document.querySelector('#status').textContent='Gespeichert · '+current.toLocaleDateString('de-DE');
+  } catch(error) {
+    document.querySelector('#status').textContent='Speichern fehlgeschlagen';
+    alert('Der Tag wurde nicht gewechselt. Deine Eingaben bleiben stehen. Bitte Verbindung und Anmeldung prüfen.');
+    console.error(error);
+  } finally {switchingDay=false;button.disabled=false;}
+},true);
+// Beim ersten Öffnen ebenfalls bereits gespeicherte Felder zeigen.
+window.addEventListener('load',()=>setTimeout(populateDayForms,500));
 </script></body></html>
