@@ -141,4 +141,22 @@ renderCalendar();
   render=function(){oldRender();showSets()};
   form.onsubmit=async event=>{event.preventDefault();if(!user){status.textContent='Bitte zuerst anmelden.';return}const select=form.elements.exercise,name=(select.value==='__custom__'?document.getElementById('customExercise').value:select.value).trim();if(!name||!draft.length){status.textContent='Bitte Übung auswählen und mindestens einen Satz hinzufügen.';return}const target=day();target.strength.push({exercise:name,sets:draft.map(x=>({...x}))});const {error}=await sb.from('dashboard_states').upsert({user_id:user.id,state,updated_at:new Date().toISOString()});if(error){target.strength.pop();status.textContent='Speichern fehlgeschlagen: '+error.message;return}localStorage.setItem(storage,JSON.stringify(state));draft=[];form.reset();document.getElementById('customExerciseLabel').hidden=true;document.getElementById('customExercise').required=false;status.textContent='Übung und Sätze gespeichert.';drawDraft();render()};drawDraft();showSets();
 })();
+</script><style>
+#strengthForm{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:12px;align-items:end}
+#strengthForm label:has(select),#customExerciseLabel,#strengthForm .wide{grid-column:1/-1}
+#strengthForm label:has(input[name="sets"]){display:none!important}
+#strengthForm button[type="button"]{white-space:nowrap;min-height:44px}
+#strengthForm button:not([type]),#strengthForm button[type="submit"]{grid-column:1/-1;justify-self:start}
+#strength{display:grid;gap:12px;margin-top:20px}
+#strength .entry{position:relative;background:#f8faf8;border:1px solid #e1eae3;border-radius:16px;padding:18px;box-shadow:0 4px 14px rgba(24,53,47,.04)}
+#strength .entry strong{display:block;padding-right:90px;font-size:1rem;color:#18352f}
+#strength .entry ul{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+#strength .entry li{background:#e8f3ed;border:1px solid #d6e9de;color:#285d48;border-radius:999px;padding:7px 11px;font-size:.82rem;font-weight:600}
+#strength .entry>button{position:absolute;top:12px;right:12px;background:transparent;color:#8b625b;font-size:.78rem;padding:7px 9px}
+#strength .entry>button:hover{background:#f7e8e5}
+@media(max-width:540px){#strengthForm{grid-template-columns:1fr 1fr}#strengthForm button[type="button"]{grid-column:1/-1}}
+</style><script>
+// Nur die Beschriftung des vorhandenen Absenden-Buttons ändern.
+const trainingSubmit=document.querySelector('#strengthForm button:not([type]), #strengthForm button[type="submit"]');
+if(trainingSubmit) trainingSubmit.textContent='Übung speichern';
 </script></body></html>
