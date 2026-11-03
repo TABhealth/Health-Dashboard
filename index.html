@@ -207,4 +207,31 @@ if(trainingSubmit) trainingSubmit.textContent='Übung speichern';
  render=function(){previousRender();refreshNutrition();const container=document.getElementById('supplements');if(container&&!container.querySelector('[data-supp="4"]')){let label=document.createElement('label');label.className='row';let input=document.createElement('input');input.type='checkbox';input.dataset.supp='4';input.checked=!!day().supp[4];let span=document.createElement('span');span.textContent='Kreatin';label.append(input,span);container.append(label)}};
  render();
 })();
+</script><script>
+(()=>{
+  const form=document.getElementById('bodyForm');
+  const message=document.createElement('p');message.className='hint';message.setAttribute('role','status');form.after(message);
+  function showSavedBody(){
+    const values=day().body||{};
+    for(const name of ['weight','hrv','rhr']) form.elements[name].value=values[name]??'';
+  }
+  // Das ursprüngliche allgemeine Formularverhalten wird nur für dieses Formular ersetzt.
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    if(!user){message.textContent='Bitte melde dich an, um die Werte zu speichern.';return;}
+    const record=day(), values=Object.fromEntries(new FormData(form));
+    const previous=record.body, previousDraft=record.drafts?.bodyForm;
+    record.body=values;record.drafts ||= {};record.drafts.bodyForm={...values};
+    message.textContent='Wird gespeichert …';
+    try{
+      const {error}=await saveCurrentDateData();if(error)throw error;
+      localStorage.setItem(storage,JSON.stringify(state));
+      message.textContent='Gespeichert.';render();showSavedBody();
+    }catch(error){record.body=previous;record.drafts.bodyForm=previousDraft;message.textContent='Speichern fehlgeschlagen. Deine Eingaben stehen weiterhin im Formular.';console.error(error)}
+  };
+  const originalPopulate=populateDayForms;
+  populateDayForms=function(){originalPopulate();showSavedBody()};
+  const originalLoad=loadAllDailyData;
+  loadAllDailyData=async function(){const result=await originalLoad();if(result.data?.state) setTimeout(showSavedBody,0);return result};
+})();
 </script></body></html>
