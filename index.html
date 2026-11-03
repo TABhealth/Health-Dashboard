@@ -297,4 +297,18 @@ async function loadHistoricalData(){
  }
  const grid=document.getElementById('mealGrid');new MutationObserver(enhance).observe(grid,{childList:true});enhance();
 })();
+</script><style>
+#compositionForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}#compositionForm button{grid-column:1/-1;justify-self:start}@media(max-width:680px){#compositionForm{grid-template-columns:1fr}}
+</style><script>
+(()=>{
+ const suppCard=document.getElementById('supplements').closest('article');const card=document.createElement('article');card.className='card';card.innerHTML='<h3>Körperzusammensetzung</h3><form id="compositionForm"><label>Gewicht (kg)<input name="weight" type="number" min="0" step="0.1"></label><label>Muskelmasse (%)<input name="muscle" type="number" min="0" max="100" step="0.1"></label><label>Körperfettanteil (%)<input name="bodyFat" type="number" min="0" max="100" step="0.1"></label><label>Körperwasseranteil (%)<input name="bodyWater" type="number" min="0" max="100" step="0.1"></label><button type="submit">Speichern</button></form><p class="hint" id="compositionStatus" role="status"></p>';suppCard.after(card);
+ const form=document.getElementById('compositionForm'),status=document.getElementById('compositionStatus');let displayedDate=null;
+ function fill(){const record=day(),values=record.body||{};for(const name of ['weight','muscle','bodyFat','bodyWater'])form.elements[name].value=values[name]??'';displayedDate=iso(current)}
+ form.onsubmit=async e=>{e.preventDefault();if(!user){status.textContent='Bitte zuerst anmelden.';return}const record=day(),before={...record.body},values=Object.fromEntries(new FormData(form));record.body={...record.body,...values};status.textContent='Wird gespeichert …';try{const {error}=await saveCurrentDateData();if(error)throw error;localStorage.setItem(storage,JSON.stringify(state));status.textContent='Gespeichert.';render()}catch(error){record.body=before;status.textContent='Speichern fehlgeschlagen. Deine Eingaben bleiben erhalten.';console.error(error)}};
+ const oldRender=render;render=function(){oldRender();if(displayedDate!==iso(current))fill()};
+ const oldLoadAll=loadAllDailyData;loadAllDailyData=async function(){const result=await oldLoadAll();if(result.data?.state)setTimeout(fill,0);return result};
+ const oldPopulate=populateDayForms;populateDayForms=function(){oldPopulate();fill()};
+ const oldTrends=renderTrends;renderTrends=function(){oldTrends();const root=document.getElementById('trendsGrid');if(typeof Chart==='undefined')return;const keys=Array.from({length:period},(_,i)=>{const x=new Date();x.setHours(12,0,0,0);x.setDate(x.getDate()-period+1+i);return iso(x)});[['Körperfettanteil','bodyFat','#d48e59'],['Muskelmasse','muscle','#438f79'],['Körperwasseranteil','bodyWater','#4d8fc6']].forEach(([title,field,color])=>{const article=document.createElement('article');article.className='card';const h=document.createElement('h4');h.textContent=title+' (%)';const canvas=document.createElement('canvas');article.append(h,canvas);root.append(article);new Chart(canvas,{type:'line',data:{labels:keys.map(k=>k.slice(8)+'.'+k.slice(5,7)),datasets:[{label:title,data:keys.map(k=>{const v=state.days[k]?.body?.[field];return v==null||v===''?null:Number(v)}),borderColor:color,spanGaps:false,tension:.2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:'%'}}}}})})};
+ fill();renderTrends();
+})();
 </script></body></html>
