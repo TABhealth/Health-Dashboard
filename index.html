@@ -33,7 +33,8 @@ async function saveCurrentDateData(){
  return await sb.from('daily_logs').upsert({user_id:user.id,date:selectedDate,base_data:{plan:d.plan,base:d.base,body:d.body,drafts:d.drafts||{},todos:state.todos||[]},training_data:{strength:d.strength,cardio:d.cardio},nutrition_data:{food:d.food},health_data:{supp:d.supp,sleep:d.sleep},notes:state.reflection||'',updated_at:new Date().toISOString()},{onConflict:'user_id,date'});
 }
 async function loadAllDailyData(){
- const {data,error}=await sb.from('daily_logs').select('date,base_data,training_data,nutrition_data,health_data,notes').eq('user_id',user.id).eq('date',iso(current));
+ const today=new Date();today.setHours(12,0,0,0);const start=new Date(today);start.setDate(start.getDate()-29);
+ const {data,error}=await sb.from('daily_logs').select('date,base_data,training_data,nutrition_data,health_data,notes').eq('user_id',user.id).gte('date',iso(start)).lte('date',iso(today)).order('date',{ascending:true});
  if(error)return {data:null,error};
  const result={days:{},todos:[],reflection:''};
  for(const row of data||[]){const b=row.base_data||{},t=row.training_data||{},h=row.health_data||{};result.days[row.date]={plan:b.plan||{},base:b.base||{},body:b.body||{},drafts:b.drafts||{},strength:t.strength||[],cardio:t.cardio||[],food:Array.isArray(row.nutrition_data)?row.nutrition_data:(row.nutrition_data?.food||[]),supp:h.supp||{},sleep:h.sleep||{}};if(row.date===iso(current)){result.reflection=row.notes||'';result.todos=b.todos||[]}}
@@ -233,5 +234,30 @@ if(trainingSubmit) trainingSubmit.textContent='Übung speichern';
   populateDayForms=function(){originalPopulate();showSavedBody()};
   const originalLoad=loadAllDailyData;
   loadAllDailyData=async function(){const result=await originalLoad();if(result.data?.state) setTimeout(showSavedBody,0);return result};
+})();
+</script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script><script>
+// Historie wird beim Anmelden durch loadAllDailyData() geladen; diese Funktion
+// verwendet denselben 30-Tage-Abruf für eine ausdrückliche Aktualisierung.
+async function loadHistoricalData(){
+ const result=await loadAllDailyData();
+ if(result.error)throw result.error;
+ Object.assign(state.days,result.data.state.days);
+ renderCalendar();renderTrends();
+}
+(()=>{
+ const charts=[];
+ renderTrends=function(){
+  charts.splice(0).forEach(c=>c.destroy());
+  const root=document.getElementById('trendsGrid');root.replaceChildren();
+  const keys=Array.from({length:period},(_,i)=>{const date=new Date();date.setHours(12,0,0,0);date.setDate(date.getDate()-period+1+i);return iso(date)});
+  const fields=[['Gewicht','kg',d=>d?.body?.weight],['HRV','ms',d=>d?.body?.hrv],['Ruhepuls','bpm',d=>d?.body?.rhr],['Schritte','Schritte',d=>d?.base?.steps],['Wasser','ml',d=>d?.base?.water]];
+  fields.forEach(([label,unit,get])=>{
+   const card=document.createElement('article');card.className='card';const title=document.createElement('h4');title.textContent=label+' ('+unit+')';card.append(title);const canvas=document.createElement('canvas');card.append(canvas);root.append(card);
+   const values=keys.map(k=>{const v=get(state.days[k]);return v===''||v==null?null:Number(v)});
+   if(typeof Chart==='undefined'){card.append('Diagramm konnte nicht geladen werden.');return}
+   charts.push(new Chart(canvas,{type:'line',data:{labels:keys.map(k=>k.slice(8)+'.'+k.slice(5,7)),datasets:[{label:unit,data:values,borderColor:'#287e69',backgroundColor:'#287e6930',spanGaps:false,tension:.2}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:unit}}}}}));
+  });
+ };
+ renderTrends();
 })();
 </script></body></html>
